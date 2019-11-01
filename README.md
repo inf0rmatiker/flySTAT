@@ -1,6 +1,7 @@
 # flySTAT
 
-<ins>Definition</ins> STAT *(adverb)*: "without delay : immediately" \[[Merriam-Webster](https://www.merriam-webster.com/dictionary/stat)\]
+<ins>Definition</ins>
+- STAT *(adverb)*: "without delay : immediately" \[[Merriam-Webster](https://www.merriam-webster.com/dictionary/stat)\]
 
 ## Description
 
