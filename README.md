@@ -2,6 +2,8 @@
 
 ## Description
 
+*stat (adverb): without delay : immediately (Merriam-Webster)[https://www.merriam-webster.com/dictionary/stat]*
+
 Have you ever wondered what future delays would look like for an airport, so you can plan accordingly and minimize traveling pains?
 FlySTAT aims to unveil the unknown and provide accurate guidance for what future delays might look like. It will answer questions like:
 - Which airports will have the least probability of delays in the future?
