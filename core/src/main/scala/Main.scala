@@ -6,18 +6,18 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import scala.collection.mutable.ArrayBuffer
 
+import analytics.AirportRank
+
 object Main {
 
   def main(args: Array[String]): Unit = {
     if (args.length >=  2) {
-      var conf: SparkConf = new SparkConf().setAppName("flySTAT")
-      var sc: SparkContext = new SparkContext(conf)
-
       val inputDirectory : String = args(0)
       val outputDirectory: String = args(1)
       
-      var fileNames: ArrayBuffer[String] = getFileNames(inputDirectory)
-      sc.parallelize(fileNames, 1).saveAsTextFile(outputDirectory)
+      var fileNames: ArrayBuffer[String] = getFileNames(inputDirectory) 
+      var airportRanks = new AirportRank(fileNames, "flySTAT", inputDirectory, outputDirectory)
+      airportRanks.calculateAirportRanks()
     }
     else {
       printUsageMessage()
@@ -35,7 +35,7 @@ object Main {
       
     val fs = FileSystem.get(new Configuration())
     val status = fs.listStatus(new Path(directory))
-    status.foreach( fileStatus => fileNames += fileStatus.getPath().getName() )
+    status.foreach( fileStatus => fileNames += (directory + "/" + fileStatus.getPath().getName()) )
     return fileNames
   }
 
