@@ -1,3 +1,5 @@
 **/*.zip
 **/*.iml
 .idea/
+target/
+project/
