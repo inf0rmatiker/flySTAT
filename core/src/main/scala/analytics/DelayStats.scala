@@ -25,25 +25,31 @@ class DelayStats (inputFileNames: ArrayBuffer[String], appName: String, inputDir
                           .load("hdfs://cheyenne:30241/cs435/flySTAT/data/*.csv")
     
     val relevantData:  RDD[Row] = files.select("OriginAirportID", "FlightDate", "DepDelayMinutes", "ArrDelayMinutes",  "DestAirportID").na.drop().rdd
-    val formattedData: RDD[((String,String), Array[String])] = relevantData.map(row => 
-                                                                            ( (row(0).toString, 
-                                                                              Array(row(1).toString,row(2).toString,row(3).toString,row(4).toString) )
-                                                                      )
     
- 
+    // In the form ( (OriginAirportID, FlightDate), [FlightDate, DepDelayMinutes, ArrDelayMinutes, DestAirportID] )
+    val formattedData: RDD[((String,String), Array[String])] = relevantData.map(row => 
+                                                                    ((row(0).toString,row(1).toString),
+                                                                     Array(row(1).toString,row(2).toString,row(3).toString,row(4).toString) ))
+    
     for (year <- 2009 to 2009) {
-      var filteredByDate  = formattedData.filter(record => record._2(0).contains(year + "-01-01"))
+      var filteredByDate  = formattedData.filter(record => record._1._2 == (year + "-01-01"))
+      
+      // In the form ( (OriginAirportID, FlightDate), Iterable([FlightDate, DepDelayMinutes, ArrDelayMinutes, DestAirportID], [...], ...) )
       var groupedByID     = filteredByDate.groupByKey()
       
-      var groupedByDate = groupedByID.map{ case(id, values) =>
+      // In the form ( (OriginAirportID, FlightDate), AverageDelayMinutes )
+      var groupedByDate = groupedByID.map{ case(key, values) =>
         var count: Int = 0
         var totalSum: Double = 0.0
         
-        tuples.foreach{ valueArray =>
-          
+        values.foreach{ valueArray =>
+          count += 1
+          totalSum += valueArray(1).toDouble
         }
+        (key, totalSum / count)
       }
-      janFirstAverages.coalesce(1).saveAsTextFile(outputDirectory)
+
+      groupedByDate.coalesce(1).saveAsTextFile(outputDirectory)
   
     }
   }
