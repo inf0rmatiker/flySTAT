@@ -33,7 +33,7 @@ class DelayStats (inputFileNames: ArrayBuffer[String], appName: String, inputDir
     
     // Filter out any records for 2019, to test against
     val subset: RDD[((String,String), Array[String])] = formattedData.filter( record =>
-                                                              record._1._2.contains("2019") )
+                                                              !record._1._2.contains("2019") )
     
     // In the form ( (OriginAirportID, FlightDate), Iterable([FlightDate, DepDelayMinutes, ArrDelayMinutes, DestAirportID], [...], ...) )
     var groupedByKey: RDD[((String,String), Iterable[Array[String]])] = subset.groupByKey()
@@ -50,14 +50,46 @@ class DelayStats (inputFileNames: ArrayBuffer[String], appName: String, inputDir
       (key, totalSum / count)
     }
     
-    var yearlyAveragesByDay: RDD[(String, Iterable[(String, Double)])] = dailyAverageDelays.map{ case((airportID,date), averageDelay) =>
+//    var yearlyAveragesByDay: RDD[(String, Iterable[(String, Double)])] = dailyAverageDelays.map{ case((airportID,date), averageDelay) =>
+//                                                          ((airportID,date.substring(5, date.length())), averageDelay) }
+//                                                        .mapValues((_,1)) // Add a "1" to the value tuples for counting
+//                                                        .reduceByKey( (first,second) => (first._1 + second._1, first._2 + second._2)) // Sum delays and counts
+//                                                        .mapValues{ case (sum, count) => (1.0 * sum) / count } // Transform to delay averages
+//                                                        .map( record => (record._1._2, (record._1._1,record._2)) ) // Make the month and day the key
+//                                                        .groupByKey().sortByKey()
+    
+    var yearlyAveragesByDay = dailyAverageDelays.map{ case((airportID,date), averageDelay) =>
                                                           ((airportID,date.substring(5, date.length())), averageDelay) }
                                                         .mapValues((_,1)) // Add a "1" to the value tuples for counting
                                                         .reduceByKey( (first,second) => (first._1 + second._1, first._2 + second._2)) // Sum delays and counts
                                                         .mapValues{ case (sum, count) => (1.0 * sum) / count } // Transform to delay averages
-                                                        .map( record => (record._1._2, (record._1._1,record._2)) ) // Make the month and day the key
-                                                        .groupByKey().sortByKey()
-    
+ 
+    //yearlyAveragesByDay.saveAsTextFile(outputDirectory)
+
+
+    // ========== Comparison ===========    
+
+    var groundSet: RDD[((String,String), Array[String])] = formattedData.filter( record =>
+                                                                record._1._2.contains("2019") )
+
+    var groupedByKey2019: RDD[((String,String), Iterable[Array[String]])] = groundSet.groupByKey() 
+    var dailyAverageDelays2019: RDD[((String,String), Double)] = groupedByKey2019.map{ case(key, values) =>
+      var count: Int = 0
+      var totalSum: Double = 0.0
+ 
+      values.foreach{ valueArray =>
+        count += 1
+        totalSum += valueArray(1).toDouble
+      }
+      (key, totalSum / count)
+    }.map{ case((airportID,date), averageDelay) =>
+          ((airportID,date.substring(5, date.length())), averageDelay) }
+
+    var differences = yearlyAveragesByDay.join(dailyAverageDelays2019)
+    differences.saveAsTextFile(outputDirectory)
+
+   // dailyAverageDelays2019.saveAsTextFile(outputDirectory) 
+  // .filter( x => x._1._2 == "10-15" ). 
   }
 
     
