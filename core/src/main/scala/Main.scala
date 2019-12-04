@@ -16,8 +16,8 @@ object Main {
       val outputDirectory: String = args(1)
       
       var fileNames: ArrayBuffer[String] = getFileNames(inputDirectory) 
-      var airportRanks = new AirportRank(fileNames, "flySTAT", inputDirectory, outputDirectory)
-      airportRanks.calculateAirportRanks()
+      var delayStats = new DelayStats(fileNames, "flySTAT", inputDirectory, outputDirectory)
+      delayStats.averageDelays()
     }
     else {
       printUsageMessage()
