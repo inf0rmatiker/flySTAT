@@ -36,6 +36,8 @@ object LinearRegression {
         //Get single day throughout the years (excluding 2019) for all airports
         val singleDayData :RDD[((String, String), String)] = formattedData.filter{case((airport, date), delay) => date.substring(0,4) != "2019" & date.substring(5) == args(0)}
         
+        val groupedSingleDayData :RDD[((String, String), Iterable[String])] = singleDayData.groupByKey()
+        
         //Create linear regression 
 //         val glr = new GeneralizedLinearRegression().setFamily("gaussian").setLink("identity").setMaxIter(20).setRegParam(0.3)
 
