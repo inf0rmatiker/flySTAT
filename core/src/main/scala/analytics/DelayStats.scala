@@ -85,11 +85,23 @@ class DelayStats (inputFileNames: ArrayBuffer[String], appName: String, inputDir
     }.map{ case((airportID,date), averageDelay) =>
           ((airportID,date.substring(5, date.length())), averageDelay) }
 
-    var differences = yearlyAveragesByDay.join(dailyAverageDelays2019)
-    differences.saveAsTextFile(outputDirectory)
+    var differences = yearlyAveragesByDay.join(dailyAverageDelays2019).mapValues{ case(first,second) => 
+                                                                                  val difference = first - second
+                                                                                  (f"$first%.2f", f"$second%.2f", f"$difference%.2f") }
+    
+    implicit val sortTuplesByStrings = new Ordering[(String,String)] {
+      override def compare(a: (String, String), b: (String, String)): Int = {
+        if (a._1.compare(b._1) < 0) return -1
+        else if (a._1.compare(b._1) > 0) return 1
+        else {
+          return a._2.compare(b._2)
+        }
+      }
+    }
 
-   // dailyAverageDelays2019.saveAsTextFile(outputDirectory) 
-  // .filter( x => x._1._2 == "10-15" ). 
+    var sortedDifferences = differences.sortByKey()
+    sortedDifferences.saveAsTextFile(outputDirectory)
+
   }
 
     
