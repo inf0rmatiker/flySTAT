@@ -6,6 +6,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import scala.collection.mutable.ArrayBuffer
 
+import analytics.DelayStats
 import analytics.AirportRank
 
 object Main {

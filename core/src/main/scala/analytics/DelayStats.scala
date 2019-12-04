@@ -8,6 +8,7 @@ import org.apache.spark.sql.functions._
 import org.apache.spark.SparkConf
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
+import org.apache.spark.sql.DataFrame
 
 import scala.collection.mutable.ArrayBuffer
 import java.lang.Double
@@ -31,27 +32,23 @@ class DelayStats (inputFileNames: ArrayBuffer[String], appName: String, inputDir
                                                                     ((row(0).toString,row(1).toString),
                                                                      Array(row(1).toString,row(2).toString,row(3).toString,row(4).toString) ))
     
-    for (year <- 2009 to 2009) {
-      var filteredByDate  = formattedData.filter(record => record._1._2 == (year + "-01-01"))
+    // In the form ( (OriginAirportID, FlightDate), Iterable([FlightDate, DepDelayMinutes, ArrDelayMinutes, DestAirportID], [...], ...) )
+    var groupedByKey: RDD[((String,String), Iterable[Array[String]])] = formattedData.groupByKey()
+    
+    // In the form ( (OriginAirportID, FlightDate), AverageDelayMinutes )
+    var dailyAverageDelays = groupedByKey.map{ case(key, values) =>
+      var count: Int = 0
+      var totalSum: Double = 0.0
       
-      // In the form ( (OriginAirportID, FlightDate), Iterable([FlightDate, DepDelayMinutes, ArrDelayMinutes, DestAirportID], [...], ...) )
-      var groupedByID     = filteredByDate.groupByKey()
-      
-      // In the form ( (OriginAirportID, FlightDate), AverageDelayMinutes )
-      var groupedByDate = groupedByID.map{ case(key, values) =>
-        var count: Int = 0
-        var totalSum: Double = 0.0
-        
-        values.foreach{ valueArray =>
-          count += 1
-          totalSum += valueArray(1).toDouble
-        }
-        (key, totalSum / count)
+      values.foreach{ valueArray =>
+        count += 1
+        totalSum += valueArray(1).toDouble
       }
-
-      groupedByDate.coalesce(1).saveAsTextFile(outputDirectory)
-  
+      (key, totalSum / count)
     }
+    
+    dailyAverageDelays.saveAsTextFile(outputDirectory) 
+    
   }
 
     

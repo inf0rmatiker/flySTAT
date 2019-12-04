@@ -12,10 +12,9 @@ if [[ $# -ge 2 ]]; then
   ${SPARK_HOME}/bin/spark-submit  \
     --class Main  \
     --master spark://dover:34567  \
-    --executor-cores 2  \
-    --num-executors 4 \
-    --executor-memory 2g  \
-    --driver-memory 3g  \
+    --executor-cores 10  \
+    --num-executors 10 \
+    --executor-memory 10g  \
     --supervise target/scala-2.11/flystat_2.11-1.0.jar $1 $2
 
 else
