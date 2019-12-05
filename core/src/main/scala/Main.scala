@@ -18,7 +18,7 @@ object Main {
       
       var fileNames: ArrayBuffer[String] = getFileNames(inputDirectory) 
       var delayStats = new DelayStats(fileNames, "flySTAT", inputDirectory, outputDirectory)
-      delayStats.averageDelays()
+      delayStats.predictDelays()
     }
     else {
       printUsageMessage()
