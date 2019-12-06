@@ -6,6 +6,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{FileSystem, Path}
 import scala.collection.mutable.ArrayBuffer
 
+import analytics.DelayStats
 import analytics.AirportRank
 
 object Main {
@@ -16,8 +17,8 @@ object Main {
       val outputDirectory: String = args(1)
       
       var fileNames: ArrayBuffer[String] = getFileNames(inputDirectory) 
-      var airportRanks = new AirportRank(fileNames, "flySTAT", inputDirectory, outputDirectory)
-      airportRanks.calculateAirportRanks()
+      var delayStats = new DelayStats(fileNames, "flySTAT", inputDirectory, outputDirectory)
+      delayStats.predictDelays()
     }
     else {
       printUsageMessage()
