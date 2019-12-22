@@ -47,7 +47,7 @@ object Main {
             "\t\t--class Main \\\n" +
             "\t\t--master <spark_master>  \\\n" +
             "\t\t--supervise <jar_file> <hdfs_input_dir> <hdfs_output_dir>\n")
-    }
+  }
 
 
 }
