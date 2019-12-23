@@ -24,18 +24,42 @@ class DelayStats (inputFileNames: ArrayBuffer[String], appName: String, inputDir
                           .option("header", "true")
                           .load("hdfs://cheyenne:30241/cs435/flySTAT/data/*.csv")
     
-    val relevantData: RDD[Row] = files.select("OriginAirportID", "FlightDate", "DepDelayMinutes", "ArrDelayMinutes",  "DestAirportID", "DepDel15").na.drop().rdd
+    val relevantData:   RDD[Row] = files.select("OriginAirportID", "FlightDate", "DepDelayMinutes", "ArrDelayMinutes",  "DestAirportID", "DepDel15").na.drop().rdd
+    val dailyAverages:  RDD[((String,String), Array[Double])] = airportDailyAverages(relevantData);
+    val yearlyAverages: RDD[((String,String), List[Double])]  = globalDelayAverages(dailyAverages);
+                                                        
+    implicit val sortTuplesByStrings = new Ordering[(String,String)] {
+      override def compare(a: (String, String), b: (String, String)): Int = {
+        if (a._1.compare(b._1) < 0) return -1
+        else if (a._1.compare(b._1) > 0) return 1
+        else {
+          return a._2.compare(b._2)
+        }
+      }
+    }
     
-    // In the form ( (OriginAirportID, FlightDate), [FlightDate, DepDelayMinutes, ArrDelayMinutes, DestAirportID, DepDel15] )
-    val formattedData: RDD[((String,String), Array[String])] = relevantData.map(row => 
+    // ((OriginAirportID,MM-DD), [delayMinutesSum,totalCount,delayedCount,globalTotalAverage,globalDelayedAverage,daysConsidered,percentFlightsDelayed])
+    val sortedDifferences = yearlyAverages.sortByKey().mapValues{ case(valueDoubles) =>
+                                                                   var finalStats = valueDoubles :+ valueDoubles(2)/valueDoubles(1) * 100.0 // Percentage delayed 
+                                                                   (finalStats.collect{ case value: Double => f"$value%.2f" }) 
+                                                                 }
+    sortedDifferences.saveAsTextFile(outputDirectory)
+  }
+
+  /**
+    Returns PairRDD in the form:
+    ((OriginAirportID, FlightDate), [delayedMinutesSum, totalCount, delayedCount])
+  */
+  def airportDailyAverages(RDD[Row] records): RDD[(String,String), Array[Double]] = {
+    // ((OriginAirportID, FlightDate), [FlightDate, DepDelayMinutes, ArrDelayMinutes, DestAirportID, DepDel15])
+    val pairedRecords: RDD[((String,String), Array[String])] = records.map(row => 
                                                                     ((row(0).toString,row(1).toString),
                                                                      Array(row(1).toString,row(2).toString,row(3).toString,row(4).toString,row(5).toString) ))
     
-    // In the form ( (OriginAirportID, FlightDate), Iterable([FlightDate, DepDelayMinutes, ArrDelayMinutes, DestAirportID, DepDel15], [...], ...) )
-    var groupedByKey: RDD[((String,String), Iterable[Array[String]])] = formattedData.groupByKey()
+    // ((OriginAirportID, FlightDate), Iterable([FlightDate, DepDelayMinutes, ArrDelayMinutes, DestAirportID, DepDel15], [...], ...))
+    val groupedByKey: RDD[((String,String), Iterable[Array[String]])] = pairedRecords.groupByKey()
     
-    // In the form ( (OriginAirportID, FlightDate), [delayedMinutesSum, totalCount, delayedCount] )
-    var dailyAverageDelays: RDD[((String,String), Array[Double])] = groupedByKey.map{ case(key, values) =>
+    return groupedByKey.map{ case(key, values) =>
       var delayedMinutesSum, delayedCount, totalCount: Double = 0.0
       values.foreach{ valueArray =>
         totalCount += 1
@@ -47,46 +71,30 @@ class DelayStats (inputFileNames: ArrayBuffer[String], appName: String, inputDir
       (key, Array(delayedMinutesSum, totalCount, delayedCount))
     }
 
-    // In the form ( (OriginAirportID,MM-DD), [delayMinutesSum, totalCount, delayedCount, localTotalAverage, localDelayedAverage, 1.0] )
-    var formattedAverages: RDD[((String,String), Array[Double])] = dailyAverageDelays.map{ case((airportID,date), values) =>
+  }
+ 
+  /**
+    Returns PairRDD in the form:
+    ((OriginAirportID,MM-DD), [delayMinutesSum, totalCount, delayedCount, globalTotalAverage, globalDelayedAverage, daysConsidered])
+  */
+  def globalDelayAverages(RDD[((String, String), Array[Double])] dailyAverages): RDD[((String,String), List[Double])] = {
+    // In the form ((OriginAirportID,MM-DD), [delayMinutesSum, totalCount, delayedCount, localTotalAverage, localDelayedAverage, 1.0])
+    val formattedAverages: RDD[((String,String), Array[Double])] = dailyAverages.map{ case((airportID,date), values) =>
                                                           val totalAverage:   Double = if (values(1) > 0.0) values(0)/values(1) else 0.0
                                                           val delayedAverage: Double = if (values(2) > 0.0) values(0)/values(2) else 0.0
                                                           ((airportID,date.substring(5, date.length())), 
                                                             Array(values(0), values(1), values(2), totalAverage, delayedAverage, 1.0)) }
 
     // Reduces all the values by key by summing them 
-    // In the form ( (OriginAirportID,MM-DD), [delayMinutesSum, totalCount, delayedCount, globalTotalAverage, globalDelayedAverage, daysConsidered] )
-    var yearlyAverages: RDD[((String,String), List[Double])] = formattedAverages.reduceByKey{ (x,y) =>
-                                                                    for (i <- 0 until x.length) {
-                                                                      y(i) += x(i)
-                                                                    }
-                                                                    y
-                                                                }.mapValues{ values => 
-                                                                  values(3) /= values(5)
-                                                                  values(4) /= values(5)
-                                                                  values.toList }
-                                                         
-    implicit val sortTuplesByStrings = new Ordering[(String,String)] {
-      override def compare(a: (String, String), b: (String, String)): Int = {
-        if (a._1.compare(b._1) < 0) return -1
-        else if (a._1.compare(b._1) > 0) return 1
-        else {
-          return a._2.compare(b._2)
-        }
-      }
-    }
-    
-    // In the form ( (OriginAirportID,MM-DD), [delayMinutesSum, totalCount, delayedCount, globalTotalAverage, globalDelayedAverage, daysConsidered, percentFlightsDelayed] )
-    val sortedDifferences = yearlyAverages.sortByKey().mapValues{ case(valueDoubles) =>
-                                                                   var finalStats = valueDoubles :+ valueDoubles(2)/valueDoubles(1) * 100.0 // Percentage delayed 
-                                                                   (finalStats.collect{ case value: Double => f"$value%.2f" }) 
-                                                                 }
-    sortedDifferences.saveAsTextFile(outputDirectory)
-  }
-
-    
-  def getAirportCount(records: RDD[Array[String]] ): Int = {
-    return 0
+    return formattedAverages.reduceByKey{ (x,y) =>
+                                            for (i <- 0 until x.length) {
+                                              y(i) += x(i)
+                                            }
+                                            y
+                                        }.mapValues{ values => 
+                                          values(3) /= values(5)
+                                          values(4) /= values(5)
+                                          values.toList }
   }
 
 }
