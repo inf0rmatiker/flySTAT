@@ -50,7 +50,7 @@ class DelayStats (inputFileNames: ArrayBuffer[String], appName: String, inputDir
     Returns PairRDD in the form:
     ((OriginAirportID, FlightDate), [delayedMinutesSum, totalCount, delayedCount])
   */
-  def airportDailyAverages(val records: RDD[Row]): RDD[(String,String), Array[Double]] = {
+  def airportDailyAverages(records: RDD[Row]): RDD[((String,String), Array[Double])] = {
     // ((OriginAirportID, FlightDate), [FlightDate, DepDelayMinutes, ArrDelayMinutes, DestAirportID, DepDel15])
     val pairedRecords: RDD[((String,String), Array[String])] = records.map(row => 
                                                                     ((row(0).toString,row(1).toString),
@@ -77,7 +77,7 @@ class DelayStats (inputFileNames: ArrayBuffer[String], appName: String, inputDir
     Returns PairRDD in the form:
     ((OriginAirportID,MM-DD), [delayMinutesSum, totalCount, delayedCount, globalTotalAverage, globalDelayedAverage, daysConsidered])
   */
-  def globalDelayAverages(val dailyAverages: RDD[((String, String), Array[Double])]): RDD[((String,String), List[Double])] = {
+  def globalDelayAverages(dailyAverages: RDD[((String, String), Array[Double])]): RDD[((String,String), List[Double])] = {
     // In the form ((OriginAirportID,MM-DD), [delayMinutesSum, totalCount, delayedCount, localTotalAverage, localDelayedAverage, 1.0])
     val formattedAverages: RDD[((String,String), Array[Double])] = dailyAverages.map{ case((airportID,date), values) =>
                                                           val totalAverage:   Double = if (values(1) > 0.0) values(0)/values(1) else 0.0
