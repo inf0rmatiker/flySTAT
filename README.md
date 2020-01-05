@@ -13,3 +13,6 @@ FlySTAT aims to unveil the unknown and provide accurate guidance for what future
 - What kind of delays can be expected for a given airport?
 
 Using a range of evaluation techniques varying in complexity, from simple averaging, to weighted ranking based on delay propagation and linear regression, FlySTAT will provide results that bring useful insights to both airline industries and their customer bases.
+
+## NOTE
+This repository is a Work-In-Progress. Much has to be done to refactor the individual components, and streamline the user input. Standby...
